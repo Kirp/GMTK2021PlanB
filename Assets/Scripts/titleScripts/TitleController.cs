@@ -12,5 +12,16 @@ public class TitleController : MonoBehaviour
         SceneManager.LoadScene(1);
     }
 
+    public void LoadStage2()
+    {
+        SceneManager.LoadScene(2);
+    }
+
+    public void LoadStage3()
+    {
+        SceneManager.LoadScene(3);
+    }
+
+
 
 }

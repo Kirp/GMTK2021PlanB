@@ -44,6 +44,8 @@ public class ConsoleControl : MonoBehaviour
     [SerializeField]
     private float distanceToFirstVictim = 0f;
 
+    private float DistanceLimit = 20f;
+
     public bool canPlay = true;
     // Start is called before the first frame update
     void Start()
@@ -122,6 +124,15 @@ public class ConsoleControl : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            GameObject.Find("GameStateManager").GetComponent<GameStateManager>().ResetStage();
+        }
+
+        if (Input.GetKeyDown(KeyCode.T))
+        {
+            GameObject.Find("GameStateManager").GetComponent<GameStateManager>().ResetToTitle();
+        }
         if (!canPlay) return;
         //Debug.DrawLine(transform.position, transform.position + (Vector3.right*(grabRange)), Color.red);
         
@@ -149,9 +160,8 @@ public class ConsoleControl : MonoBehaviour
                 GameObject.Find("AuraController").GetComponent<AuraController>().CallAuraBeParent(gameObject, grabRange);
                 if (victim != null)
                 {
-                    //Debug.Log("victim not null");
-                    //Debug.Log(victims.Length);
-                    //Debug.Log(victim.gameObject.tag);
+                    
+
                     PossessedList.Add(victim.gameObject);
                     Debug.Log("Possesed list count: "+PossessedList.Count);
                     linkedUp = victim.gameObject;
@@ -213,21 +223,13 @@ public class ConsoleControl : MonoBehaviour
         {
             distanceToFirstVictim = MyLine.GetComponent<ThreePointLiner>().GetDistanceBetweenTargets();
             //Debug.Log("Distance to victim: " + distanceToVictim);
-            if (distanceToFirstVictim > 20)
+            if (distanceToFirstVictim > DistanceLimit)
             {
                 ReleaseLatestVictim();
             }
         }
 
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            GameObject.Find("GameStateManager").GetComponent<GameStateManager>().ResetStage();
-        }
-
-        if (Input.GetKeyDown(KeyCode.T))
-        {
-            GameObject.Find("GameStateManager").GetComponent<GameStateManager>().ResetToTitle();
-        }
+        
 
 
 

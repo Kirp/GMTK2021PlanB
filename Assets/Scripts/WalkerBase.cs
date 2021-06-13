@@ -8,6 +8,8 @@ public abstract class WalkerBase : MonoBehaviour
     private Rigidbody2D rb;
     protected float WalkSpeed = 5f;
     private float currentDirection = 1;
+
+    [SerializeField]
     private bool hasFreeWill = true;
     protected float sightRayLength = 0.5f;
     protected float nextBlockRayLengthMultiplier = 4f;
@@ -28,6 +30,10 @@ public abstract class WalkerBase : MonoBehaviour
     [SerializeField]
     private float distanceToVictim = 0;
 
+    protected float DistanceLimit = 20f;
+
+    protected bool PossessedButAsleep = false;
+    
     // Start is called before the first frame update
     public virtual void Start()
     {
@@ -40,7 +46,16 @@ public abstract class WalkerBase : MonoBehaviour
         hasFreeWill = false;
         rb.velocity = Vector2.zero;
 
-        
+    }
+
+    public virtual bool HasLineToVictim()
+    {
+        if(lineToVictim = null)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     public virtual void RenewControl()
@@ -68,6 +83,13 @@ public abstract class WalkerBase : MonoBehaviour
         Color grab = sr.color;
         grab.a = flag==true?0.5f:1f;
         sr.color = grab;
+
+        PossessedButAsleep = flag;
+    }
+
+    public virtual bool ControlledButAsleep()
+    {
+        return PossessedButAsleep;
     }
 
     
@@ -101,6 +123,7 @@ public abstract class WalkerBase : MonoBehaviour
         GameObject.Find("AuraController").GetComponent<AuraController>().CallAuraBeParent(gameObject, grabRange);
         if (victim != null)
         {
+            if (victim.gameObject.GetComponent<WalkerBase>().ControlledButAsleep() == true) return null;
             //Debug.Log("victim not null");
             Debug.Log("Get -> "+victim.gameObject.name);
 
@@ -183,7 +206,7 @@ public abstract class WalkerBase : MonoBehaviour
         {
             distanceToVictim = lineToVictim.GetComponent<ThreePointLiner>().GetDistanceBetweenTargets();
             //Debug.Log("Distance to victim: " + distanceToVictim);
-            if (distanceToVictim > 20)
+            if (distanceToVictim > DistanceLimit)
             {
                 GameObject.Find("PlayerConsole").GetComponent<ConsoleControl>().ReleaseLatestVictim();
             }
@@ -208,6 +231,7 @@ public abstract class WalkerBase : MonoBehaviour
     {
         if(hasFreeWill && collision.gameObject.layer == 3)
         {
+            Debug.Log("Collided with walker");
             currentDirection *= -1;
         }
     }
