@@ -12,11 +12,13 @@ public class ThreePointLiner : MonoBehaviour
     public Vector2 midWayPoint = Vector2.zero;
     public Vector2 midWayPoint2 = Vector2.zero;
 
+    public float LineLimit = 20f;
+
     // Start is called before the first frame update
     void Start()
     {
         LR = GetComponent<LineRenderer>();
-        
+        //LR.widthMultiplier = 0.5f;
     }
 
     // Update is called once per frame
@@ -38,12 +40,34 @@ public class ThreePointLiner : MonoBehaviour
             LR.SetPosition(1, midWayPoint);
             LR.SetPosition(2, midWayPoint2);
             LR.SetPosition(3, targetTransform.position);
+
+
+            LR.widthMultiplier = ChangeWidthBasedOnReverseLimit();
         }
+
+        
+    }
+
+    public float ChangeWidthBasedOnReverseLimit()
+    {
+        var targ = GetDistanceBetweenTargets();
+        var currentW = LineLimit - targ;
+        if (currentW < 0) currentW = 1;
+        if (currentW > LineLimit) currentW = LineLimit;
+        var revRatio = currentW / LineLimit;
+        revRatio *= 0.2f;
+
+        return revRatio;
     }
 
     public void LoadTargetTransforms(Transform origin, Transform target)
     {
         originTransform = origin;
         targetTransform = target;
+    }
+
+    public float GetDistanceBetweenTargets()
+    {
+        return Vector2.Distance(originTransform.position, targetTransform.position);
     }
 }

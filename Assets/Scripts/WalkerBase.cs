@@ -6,14 +6,32 @@ public abstract class WalkerBase : MonoBehaviour
 {
 
     private Rigidbody2D rb;
-    private float WalkSpeed = 5f;
+    protected float WalkSpeed = 5f;
     private float currentDirection = 1;
     private bool hasFreeWill = true;
-    private float sightRayLength = 0.5f;
+    protected float sightRayLength = 0.5f;
+    protected float nextBlockRayLengthMultiplier = 4f;
+    //private float controllerMoveDirection;
+    protected float grabRange = 5f;
+    
+
+    private bool isOnGround = false;
+    protected float JumpForce = 15f;
+
+    private SpriteRenderer sr;
+    
+    protected float groundCheckRayLength = 1.15f;
+
+    
+    protected GameObject lineToVictim = null;
+
+    [SerializeField]
+    private float distanceToVictim = 0;
 
     // Start is called before the first frame update
-    void Start()
+    public virtual void Start()
     {
+        sr = GetComponent<SpriteRenderer>();
         rb = GetComponent<Rigidbody2D>();
     }
 
@@ -21,10 +39,42 @@ public abstract class WalkerBase : MonoBehaviour
     {
         hasFreeWill = false;
         rb.velocity = Vector2.zero;
+
+        
     }
+
+    public virtual void RenewControl()
+    {
+        Destroy(lineToVictim);
+        hasFreeWill = false;
+        rb.velocity = Vector2.zero;
+        AreWeColoredDead(false);
+        SetColliderActivation(true);
+        rb.isKinematic = false;
+    }
+
+    public virtual void ReleaseControl()
+    {
+        Debug.Log("Freedom!");
+        hasFreeWill = true;
+        //Destroy(lineToVictim);
+        SetColliderActivation(true);
+        rb.isKinematic = false;
+        currentDirection = -1;
+    }
+
+    public virtual void AreWeColoredDead(bool flag)
+    {
+        Color grab = sr.color;
+        grab.a = flag==true?0.5f:1f;
+        sr.color = grab;
+    }
+
+    
 
     public virtual void ControllerOrders(float moveDirection)
     {
+        /*
         rb.velocity = new Vector2(WalkSpeed * moveDirection, rb.velocity.y);
         if (moveDirection > 0)
         {
@@ -34,49 +84,110 @@ public abstract class WalkerBase : MonoBehaviour
         { 
             transform.localScale = new Vector3(-1, 1, 1);
         }
+        */
+        currentDirection = moveDirection;
     }
 
     public abstract void BaseAction();
+
+    public abstract void SetColliderActivation(bool setter);
+
+    public virtual GameObject PossessAuraEmit()
+    {
+        if (!isOnGround) return null;
+        rb.isKinematic = true;
+        SetColliderActivation(false);
+        Collider2D victim = Physics2D.OverlapCircle(transform.position, grabRange, (1 << 3));
+        GameObject.Find("AuraController").GetComponent<AuraController>().CallAuraBeParent(gameObject, grabRange);
+        if (victim != null)
+        {
+            //Debug.Log("victim not null");
+            Debug.Log("Get -> "+victim.gameObject.name);
+
+            lineToVictim = GameObject.Find("LineManager").GetComponent<LineFactory>().GetLine(transform, victim.gameObject.transform);
+            currentDirection = 0;
+            AreWeColoredDead(true);
+            rb.velocity = Vector2.zero;
+            SetColliderActivation(true);
+            return victim.gameObject;
+
+        }
+        SetColliderActivation(true);
+        rb.isKinematic = false;
+
+        return null;
+    }
+
+    public virtual void Jump()
+    {
+        if (isOnGround)
+        {
+            rb.velocity = new Vector2(rb.velocity.x, JumpForce);
+        }
+    }
     
 
     public virtual void SelfMovement()
     {
-        if (hasFreeWill)
-        {
-            rb.velocity = new Vector2(WalkSpeed * currentDirection, rb.velocity.y);
-
-            var shootVector = Vector2.right;
-            if (currentDirection > 0)
-            {
-                shootVector = Vector2.right;
-                transform.localScale = new Vector3(1, 1, 1);
-
-
-            }
-            if (currentDirection < 0)
-            {
-                shootVector = Vector2.left;
-                transform.localScale = new Vector3(-1, 1, 1);
-
-            }
-
-            RaycastHit2D hit = Physics2D.Raycast(transform.position, shootVector, sightRayLength, (1<<6));
-            if(hit.collider != null)
-            {
-                currentDirection *= -1;
-            }
-
-            Debug.DrawRay(transform.position, shootVector * sightRayLength, Color.red);
-
-
-        }
+        if (!isOnGround && hasFreeWill) return;
+        rb.velocity = new Vector2(WalkSpeed * currentDirection, rb.velocity.y);
     }
 
     
 
     private void Update()
     {
-        
+        var shootVector = Vector2.right;
+        if (currentDirection > 0)
+        {
+            shootVector = Vector2.right;
+            transform.localScale = new Vector3(1, 1, 1);
+
+
+        }
+        if (currentDirection < 0)
+        {
+            shootVector = Vector2.left;
+            transform.localScale = new Vector3(-1, 1, 1);
+        }
+        if (hasFreeWill)
+        {
+
+
+            RaycastHit2D hit = Physics2D.Raycast(transform.position, shootVector, sightRayLength, (1 << 6));
+            if (hit.collider != null)
+            {
+                currentDirection *= -1;
+            }
+
+
+            RaycastHit2D groundHit = Physics2D.Raycast(transform.position, (Vector2.down + shootVector), (sightRayLength * nextBlockRayLengthMultiplier), (1 << 6));
+            if (groundHit.collider == null)
+            {
+                currentDirection *= -1;
+                Debug.Log("no more next tile!");
+            }
+            else Debug.Log(groundHit.collider.gameObject.tag);
+            
+        }
+
+        Debug.DrawRay(transform.position, Vector2.down * groundCheckRayLength, Color.red);
+        RaycastHit2D downGround = Physics2D.Raycast(transform.position, Vector2.down, groundCheckRayLength, (1 << 6));
+        if (downGround.collider == null)
+        {
+            isOnGround = false;
+        }
+        else isOnGround = true;
+
+        if (lineToVictim != null)
+        {
+            distanceToVictim = lineToVictim.GetComponent<ThreePointLiner>().GetDistanceBetweenTargets();
+            //Debug.Log("Distance to victim: " + distanceToVictim);
+            if (distanceToVictim > 20)
+            {
+                GameObject.Find("PlayerConsole").GetComponent<ConsoleControl>().ReleaseLatestVictim();
+            }
+        }
     }
 
     private void FixedUpdate()
@@ -84,6 +195,21 @@ public abstract class WalkerBase : MonoBehaviour
         SelfMovement();
     }
 
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (!hasFreeWill && collision.gameObject.tag == "goal")
+        {
+            GameObject.Find("GameStateManager").GetComponent<GameStateManager>().GameWin();
+            rb.velocity = Vector2.zero;
+        }
+    }
 
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if(hasFreeWill && collision.gameObject.layer == 3)
+        {
+            currentDirection *= -1;
+        }
+    }
 
 }
